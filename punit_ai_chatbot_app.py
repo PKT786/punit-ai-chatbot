@@ -1,5 +1,10 @@
 import streamlit as st
-
+st.set_page_config(
+    page_title="Punit AI Assistant",
+    page_icon="🤖",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 st.set_page_config(page_title="Punit AI Assistant", page_icon="🤖")
 
 st.title("🤖 Punit AI Learning Assistant")
