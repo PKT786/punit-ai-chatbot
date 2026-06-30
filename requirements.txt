@@ -1,11 +1,4 @@
 streamlit
-google-generativeai
-langchain
-langchain-core
-langchain-community
-langchain-google-genai
-langchain-text-splitters
-faiss-cpu
+langchain-groq
 beautifulsoup4
 requests
-pypdf
