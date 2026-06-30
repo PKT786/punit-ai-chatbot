@@ -6,45 +6,72 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 
-# -------------------------
-# PAGE CONFIG
-# -------------------------
+# =====================================
+# PAGE SETTINGS
+# =====================================
 
 st.set_page_config(
+
     page_title="Punit AI Learning Assistant",
-    page_icon="🤖"
+
+    page_icon="🤖",
+
+    layout="wide"
+
 )
 
 
 
-# -------------------------
-# GEMINI KEY
-# -------------------------
-
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+# =====================================
+# GEMINI API KEY
+# =====================================
 
 
+try:
 
-# -------------------------
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+
+except:
+
+
+    st.error(
+        "Gemini API Key not found. Add GOOGLE_API_KEY in Streamlit Secrets."
+    )
+
+    st.stop()
+
+
+
+# =====================================
 # GEMINI MODEL
-# -------------------------
+# =====================================
+
 
 llm = ChatGoogleGenerativeAI(
 
-    model="gemini-2.0-flash",
+
+    model="gemini-1.5-flash",
+
 
     google_api_key=GOOGLE_API_KEY,
 
-    temperature=0.3
+
+    temperature=0.2,
+
+
+    max_output_tokens=1000
+
 )
 
 
 
-# -------------------------
-# YOUR WEBSITE RESOURCES
-# -------------------------
 
-URLS = [
+# =====================================
+# PUNIT TECH HUB RESOURCES
+# =====================================
+
+
+RESOURCE_LINKS = [
 
 "https://www.punittechhub.com/all-resources",
 
@@ -76,25 +103,29 @@ URLS = [
 
 
 
-# -------------------------
+
+
+# =====================================
 # LOAD WEBSITE CONTENT
-# -------------------------
+# =====================================
+
 
 @st.cache_data(ttl=86400)
 
-def load_content():
+
+def get_website_content():
 
 
-    content=""
+    all_content = ""
 
 
-    for url in URLS:
+    for url in RESOURCE_LINKS:
 
 
         try:
 
 
-            response=requests.get(
+            response = requests.get(
 
                 url,
 
@@ -103,7 +134,7 @@ def load_content():
             )
 
 
-            soup=BeautifulSoup(
+            soup = BeautifulSoup(
 
                 response.text,
 
@@ -112,34 +143,41 @@ def load_content():
             )
 
 
-            text=soup.get_text(
+            text = soup.get_text(
 
                 separator=" "
 
             )
 
 
-            content += "\n\n" + text
+            all_content += "\n\n" + text
 
 
 
-        except:
-
-            pass
+        except Exception:
 
 
-
-    return content[:50000]
+            continue
 
 
 
-knowledge = load_content()
+    # Gemini free limit safe
+
+    return all_content[:12000]
 
 
 
-# -------------------------
+
+
+knowledge = get_website_content()
+
+
+
+
+
+# =====================================
 # HEADER
-# -------------------------
+# =====================================
 
 
 st.title(
@@ -150,26 +188,31 @@ st.title(
 st.write(
 
 """
-Your AI assistant for:
+Ask anything about:
 
 📊 Excel  
 🤖 AI / ChatGPT  
-📈 Data Analytics  
+📈 Data Analysis  
 💻 Mainframe  
 📝 COBOL  
 ⚙️ JCL  
 🗄️ DB2  
-📂 CICS / VSAM
+📂 CICS  
+📁 VSAM  
 
+Powered by Punit Tech Hub resources.
 """
 
 )
 
 
 
-# -------------------------
-# CHAT
-# -------------------------
+
+
+# =====================================
+# CHAT MEMORY
+# =====================================
+
 
 if "messages" not in st.session_state:
 
@@ -177,33 +220,52 @@ if "messages" not in st.session_state:
 
 
 
-for msg in st.session_state.messages:
+
+for message in st.session_state.messages:
 
 
-    with st.chat_message(msg["role"]):
+    with st.chat_message(
 
-        st.write(msg["content"])
+        message["role"]
+
+    ):
+
+        st.write(
+
+            message["content"]
+
+        )
 
 
 
+
+
+# =====================================
+# USER QUESTION
+# =====================================
 
 
 question = st.chat_input(
-"Ask your question..."
+
+    "Ask your question..."
+
 )
+
+
 
 
 
 if question:
 
 
+
     st.session_state.messages.append(
 
         {
 
-        "role":"user",
+            "role":"user",
 
-        "content":question
+            "content":question
 
         }
 
@@ -213,32 +275,36 @@ if question:
 
     with st.chat_message("user"):
 
+
         st.write(question)
 
 
 
-
-    prompt=f"""
+    prompt = f"""
 
 You are Punit AI Learning Assistant.
 
-You help users with:
+Your job is to answer users related to:
 
-Excel
-AI
-ChatGPT
-Data Analysis
-Mainframe
-COBOL
-JCL
-DB2
-CICS
-VSAM
+- Excel
+- Microsoft Excel formulas
+- Data Analysis
+- AI
+- ChatGPT
+- Generative AI
+- Mainframe
+- COBOL
+- JCL
+- DB2
+- CICS
+- VSAM
 
 
 Use this Punit Tech Hub knowledge:
 
+
 {knowledge}
+
 
 
 User Question:
@@ -246,42 +312,88 @@ User Question:
 {question}
 
 
-Rules:
 
-- Give simple practical answers
-- If related resource exists mention it
-- Do not answer unrelated topics
+Instructions:
 
+1. Give simple beginner friendly explanation.
+
+2. Add examples where useful.
+
+3. If related resource exists mention:
+
+https://www.punittechhub.com/all-resources
+
+
+4. If information is not available say:
+
+"I could not find this topic in Punit Tech Hub resources."
 
 """
-
-
-
-    response=llm.invoke(prompt)
-
-
-
-    answer=response.content
-
-
 
 
     with st.chat_message("assistant"):
 
 
-        st.write(answer)
+        with st.spinner(
+
+            "Thinking..."
+
+        ):
+
+
+            try:
+
+
+                response = llm.invoke(
+
+                    prompt
+
+                )
+
+
+                answer = response.content
 
 
 
-        st.markdown(
-        """
+                st.write(answer)
 
-        📚 More Resources:
 
-        https://www.punittechhub.com/all-resources
 
-        """
-        )
+                st.markdown(
+
+                """
+
+                ---
+
+                📚 Explore more:
+
+                https://www.punittechhub.com/all-resources
+
+                """
+
+                )
+
+
+
+            except Exception as e:
+
+
+                answer = (
+
+                    "Sorry, AI service is temporarily unavailable."
+
+                )
+
+
+                st.error(
+
+                    str(e)
+
+                )
+
+
+                st.write(answer)
+
 
 
 
@@ -289,9 +401,9 @@ Rules:
 
         {
 
-        "role":"assistant",
+            "role":"assistant",
 
-        "content":answer
+            "content":answer
 
         }
 
