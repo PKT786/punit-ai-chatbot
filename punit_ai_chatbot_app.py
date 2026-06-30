@@ -29,13 +29,13 @@ st.set_page_config(
 
 try:
 
-    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 
 except:
 
 
     st.error(
-        "Gemini API Key not found. Add GOOGLE_API_KEY in Streamlit Secrets."
+        "Gemini API Key not found. Add GROQ_API_KEY in Streamlit Secrets."
     )
 
     st.stop()
