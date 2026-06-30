@@ -49,7 +49,7 @@ except:
 
 llm = ChatGoogleGenerativeAI(
 
-    model="gemini-2.0-flash",
+    model="gemini-2.0-flash-lite",
 
     google_api_key=GOOGLE_API_KEY,
 
@@ -159,7 +159,7 @@ def get_website_content():
 
     # Gemini free limit safe
 
-    return all_content[:12000]
+    return all_content[:6000]
 
 
 
