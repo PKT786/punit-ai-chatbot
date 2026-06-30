@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 
 
 
@@ -47,15 +47,16 @@ except:
 # =====================================
 
 
-llm = ChatGoogleGenerativeAI(
+GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 
-    model="gemini-2.0-flash-lite",
 
-    google_api_key=GOOGLE_API_KEY,
+llm = ChatGroq(
 
-    temperature=0.2,
+    model="llama-3.3-70b-versatile",
 
-    max_output_tokens=1000
+    groq_api_key=GROQ_API_KEY,
+
+    temperature=0.2
 
 )
 
