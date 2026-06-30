@@ -1,254 +1,202 @@
 import streamlit as st
-import openai
-import re
+import os
 
-# ---------------------------
+from openai import OpenAI
+
+from langchain_community.document_loaders import PyPDFLoader
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from langchain_community.vectorstores import FAISS
+
+from langchain_openai import OpenAIEmbeddings
+
+
+
+# -----------------------------
 # PAGE CONFIG
-# ---------------------------
+# -----------------------------
 
 st.set_page_config(
     page_title="Punit AI Learning Assistant",
     page_icon="🤖",
-    layout="centered"
+    layout="wide"
 )
 
 
-# ---------------------------
-# CUSTOM CSS
-# ---------------------------
+# -----------------------------
+# OPENAI CONNECTION
+# -----------------------------
 
-st.markdown("""
-<style>
-
-.main {
-    background-color:#ffffff;
-}
-
-
-.title {
-    font-size:42px;
-    font-weight:700;
-    color:#25283D;
-}
-
-
-.subtitle {
-    font-size:18px;
-    color:#34495E;
-}
-
-
-.card {
-
-background:#f5f7fb;
-padding:20px;
-border-radius:15px;
-margin-bottom:15px;
-
-}
-
-
-.topic {
-
-background:#e8f0ff;
-padding:6px 12px;
-border-radius:20px;
-font-size:14px;
-font-weight:bold;
-
-}
-
-
-.chat-user {
-
-background:#eef2f7;
-padding:15px;
-border-radius:15px;
-
-}
-
-
-.chat-bot {
-
-background:#fff7e6;
-padding:15px;
-border-radius:15px;
-
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-
-# ---------------------------
-# HEADER
-# ---------------------------
-
-st.markdown(
-"""
-<div class="title">
-🤖 Punit AI Learning Assistant
-</div>
-
-<div class="subtitle">
-Your AI mentor for Excel, Artificial Intelligence, ChatGPT, Data Analytics and Mainframe technologies.
-</div>
-
-<br>
-
-""",
-unsafe_allow_html=True
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
 )
 
 
 
-# ---------------------------
-# CAPABILITY CARDS
-# ---------------------------
+# -----------------------------
+# RESOURCE LINKS
+# -----------------------------
+
+resources = {
+
+"Excel":
+"https://www.punittechhub.com/excel-tutorials",
+
+"AI":
+"https://www.punittechhub.com/ai-learning-resources",
+
+"Mainframe":
+"https://www.punittechhub.com/mainframe-tutorials",
+
+"COBOL":
+"https://www.punittechhub.com/cobol-tutorials",
+
+"JCL":
+"https://www.punittechhub.com/jcl-tutorials",
+
+"DB2":
+"https://www.punittechhub.com/db2-tutorials",
+
+"CICS":
+"https://www.punittechhub.com/cics-tutorials",
+
+"VSAM":
+"https://www.punittechhub.com/vsam-tutorials",
+
+"Interview":
+"https://www.punittechhub.com/mainframe-interview-questions",
+
+"Formula":
+"https://www.punittechhub.com/excel-formulas-guide",
+
+"Data Analysis":
+"https://www.punittechhub.com/data-analysis-tutorials",
+
+"Charts":
+"https://www.punittechhub.com/excel-charts-tutorials",
+
+"Advanced Excel":
+"https://www.punittechhub.com/advanced-excel-tutorials",
+
+"All Resources":
+"https://www.punittechhub.com/all-resources"
+
+}
 
 
-with st.container():
 
-    st.markdown(
-    """
-    <div class="card">
+# -----------------------------
+# LOAD KNOWLEDGE BASE
+# -----------------------------
 
-    <b>I can help you with:</b>
 
-    <br><br>
+@st.cache_resource
+def load_database():
 
-    📊 <b>Excel</b><br>
-    Formulas • Dashboards • Pivot Tables • Automation
 
-    <br><br>
+    if os.path.exists("punit_vector_db"):
 
-    🤖 <b>AI & ChatGPT</b><br>
-    Prompts • AI Tools • Automation
+        embeddings = OpenAIEmbeddings()
 
-    <br><br>
+        return FAISS.load_local(
+            "punit_vector_db",
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
 
-    🖥 <b>Mainframe</b><br>
-    COBOL • JCL • DB2 • CICS
 
-    <br><br>
 
-    📈 <b>Data Analytics</b><br>
-    Power BI • Reporting • Visualization
+    documents=[]
 
-    </div>
 
-    """,
-    unsafe_allow_html=True
+    folder="knowledge_base"
+
+
+    if not os.path.exists(folder):
+
+        os.makedirs(folder)
+
+
+    for file in os.listdir(folder):
+
+        if file.endswith(".pdf"):
+
+            loader = PyPDFLoader(
+                f"{folder}/{file}"
+            )
+
+            documents.extend(
+                loader.load()
+            )
+
+
+    if len(documents)==0:
+
+        return None
+
+
+
+    splitter = RecursiveCharacterTextSplitter(
+
+        chunk_size=800,
+
+        chunk_overlap=150
+
     )
 
 
+    chunks = splitter.split_documents(
+        documents
+    )
 
 
-# ---------------------------
-# TOPIC DETECTOR
-# ---------------------------
-
-
-def detect_topic(question):
-
-    q = question.lower()
-
-
-    if any(word in q for word in
-           [
-            "excel",
-            "formula",
-            "pivot",
-            "vlookup",
-            "dashboard",
-            "spreadsheet"
-           ]):
-
-        return "📊 Excel"
-
-
-    elif any(word in q for word in
-             [
-              "ai",
-              "artificial intelligence",
-              "chatgpt",
-              "prompt",
-              "machine learning"
-             ]):
-
-        return "🤖 AI / ChatGPT"
+    embeddings = OpenAIEmbeddings()
 
 
 
-    elif any(word in q for word in
-             [
-              "cobol",
-              "jcl",
-              "mainframe",
-              "db2",
-              "cics",
-              "vsam"
-             ]):
+    db = FAISS.from_documents(
 
-        return "🖥 Mainframe"
+        chunks,
+
+        embeddings
+
+    )
 
 
-
-    elif any(word in q for word in
-             [
-              "power bi",
-              "analytics",
-              "data",
-              "visualization"
-             ]):
-
-        return "📈 Data Analytics"
+    db.save_local(
+        "punit_vector_db"
+    )
 
 
-
-    else:
-
-        return "❓ General"
-
-
-
-# ---------------------------
-# QUICK QUESTIONS
-# ---------------------------
-
-
-st.write("### Try asking:")
-
-
-col1,col2,col3,col4 = st.columns(4)
-
-
-if col1.button("Excel Dashboard"):
-    question="How to create an Excel dashboard?"
-
-
-elif col2.button("AI Prompt"):
-    question="Create a ChatGPT prompt for resume"
-
-
-elif col3.button("COBOL"):
-    question="Explain COBOL interview questions"
-
-
-elif col4.button("JCL"):
-    question="Explain JCL JOB statement"
-
-
-else:
-    question=None
+    return db
 
 
 
 
-# ---------------------------
-# CHAT HISTORY
-# ---------------------------
+db = load_database()
+
+
+
+# -----------------------------
+# HEADER
+# -----------------------------
+
+
+st.title(
+"🤖 Punit AI Learning Assistant"
+)
+
+
+st.write(
+"Ask questions about Excel, AI, ChatGPT, Data Analysis and Mainframe technologies."
+)
+
+
+
+# -----------------------------
+# CHAT MEMORY
+# -----------------------------
 
 
 if "messages" not in st.session_state:
@@ -257,39 +205,25 @@ if "messages" not in st.session_state:
 
 
 
-for msg in st.session_state.messages:
-
-    if msg["role"]=="user":
-
-        st.markdown(
-        f"""
-        <div class="chat-user">
-        👤 {msg['content']}
-        </div>
-        """,
-        unsafe_allow_html=True
-        )
+for message in st.session_state.messages:
 
 
-    else:
+    with st.chat_message(
+        message["role"]
+    ):
 
-        st.markdown(
-        f"""
-        <div class="chat-bot">
-        🤖 {msg['content']}
-        </div>
-        """,
-        unsafe_allow_html=True
+        st.write(
+            message["content"]
         )
 
 
 
-# ---------------------------
-# INPUT BOX
-# ---------------------------
+# -----------------------------
+# USER INPUT
+# -----------------------------
 
 
-user_input = st.chat_input(
+question = st.chat_input(
 "Ask your question..."
 )
 
@@ -297,84 +231,219 @@ user_input = st.chat_input(
 
 if question:
 
-    user_input=question
 
 
+    st.session_state.messages.append({
 
-if user_input:
-
-
-    topic = detect_topic(user_input)
-
-
-    st.session_state.messages.append(
-        {
         "role":"user",
-        "content":user_input
-        }
-    )
+
+        "content":question
+
+    })
+
+
+    with st.chat_message("user"):
+
+        st.write(question)
 
 
 
-    # Out of scope
 
-    if topic=="❓ General":
-
-
-        answer="""
-
-I specialize in:
-
-📊 Excel  
-🤖 AI & ChatGPT  
-📈 Data Analytics  
-🖥 Mainframe
+    # -----------------------------
+    # TOPIC DETECTION
+    # -----------------------------
 
 
-Please ask me something related to these technologies.
+    topic="All Resources"
 
-"""
+
+    q=question.lower()
+
+
+
+    if "excel" in q or "formula" in q or "pivot" in q:
+
+        topic="Excel"
+
+
+
+    elif "cobol" in q:
+
+        topic="COBOL"
+
+
+
+    elif "jcl" in q:
+
+        topic="JCL"
+
+
+
+    elif "db2" in q:
+
+        topic="DB2"
+
+
+
+    elif "cics" in q:
+
+        topic="CICS"
+
+
+
+    elif "vsam" in q:
+
+        topic="VSAM"
+
+
+
+    elif "mainframe" in q:
+
+        topic="Mainframe"
+
+
+
+    elif "ai" in q or "chatgpt" in q:
+
+        topic="AI"
+
+
+
+    elif "dashboard" in q or "analysis" in q:
+
+        topic="Data Analysis"
+
+
+
+
+
+    # -----------------------------
+    # SEARCH KNOWLEDGE
+    # -----------------------------
+
+
+    context=""
+
+
+
+    if db:
+
+
+        docs=db.similarity_search(
+
+            question,
+
+            k=3
+
+        )
+
+
+        for doc in docs:
+
+            context += doc.page_content
+
+
 
 
     else:
 
 
-        answer=f"""
-
-<span class="topic">
-{topic}
-</span>
-
-
-I detected your question as a **{topic}** topic.
+        context = """
+        No PDF uploaded yet.
+        Answer using general knowledge.
+        """
 
 
-Here is your learning answer:
-
----
-
-Your question:
-
-**{user_input}**
 
 
-This topic can be explained with practical examples, tutorials and resources available on Punit Tech Hub.
 
----
+    # -----------------------------
+    # AI RESPONSE
+    # -----------------------------
 
-You can also explore related learning resources on:
 
-🌐 https://www.punittechhub.com/all-resources
+    response = client.chat.completions.create(
+
+
+        model="gpt-4.1-mini",
+
+
+        messages=[
+
+
+        {
+
+
+        "role":"system",
+
+
+        "content":f"""
+
+You are Punit AI Learning Assistant.
+
+You answer only Excel,
+AI, ChatGPT, Data Analytics,
+and Mainframe questions.
+
+Use this Punit Tech Hub knowledge:
+
+{context}
+
+
+If the answer is not available,
+say:
+'I could not find this in Punit Tech Hub resources.'
 
 """
 
 
-    st.session_state.messages.append(
+        },
+
+
         {
-        "role":"assistant",
-        "content":answer
+
+
+        "role":"user",
+
+        "content":question
+
         }
+
+
+        ]
+
     )
 
 
-    st.rerun()
+
+    answer = response.choices[0].message.content
+
+
+
+
+    with st.chat_message("assistant"):
+
+
+        st.write(answer)
+
+
+
+        st.markdown(
+        f"""
+        ---
+        📚 Related Learning Resource:
+
+        👉 [{topic}]
+        ({resources.get(topic,resources["All Resources"])})
+        """
+        )
+
+
+
+    st.session_state.messages.append({
+
+        "role":"assistant",
+
+        "content":answer
+
+    })
