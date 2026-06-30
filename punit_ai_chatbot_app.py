@@ -3,17 +3,12 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.vectorstores import FAISS
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_groq import ChatGroq
 
 
-# ==========================
+# =========================
 # PAGE CONFIG
-# ==========================
+# =========================
 
 st.set_page_config(
     page_title="Punit AI Assistant",
@@ -22,28 +17,31 @@ st.set_page_config(
 )
 
 
-# ==========================
-# API KEY
-# ==========================
+# =========================
+# LOGO
+# =========================
 
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+try:
+    st.image(
+        "punit_logo.png",
+        width=160
+    )
+except:
+    pass
 
 
-# ==========================
-# BRANDING
-# ==========================
+# =========================
+# TITLE
+# =========================
 
-st.image(
-    "punit_logo.png",
-    width=180
+st.title(
+    "🤖 Punit AI Learning Assistant"
 )
 
 
-st.title("🤖 Punit AI Learning Assistant")
-
 st.markdown(
 """
-### Welcome to Punit AI Assistant 🚀
+## Welcome to Punit AI Assistant 🚀
 
 
 I can help you with:
@@ -51,7 +49,7 @@ I can help you with:
 
 📊 Excel formulas & dashboards
 
-🤖 AI tools & prompts
+🤖 AI tools & ChatGPT
 
 📈 Data Analytics
 
@@ -65,57 +63,101 @@ Ask me anything!
 )
 
 
-# ==========================
+st.divider()
+
+
+
+# =========================
 # QUICK BUTTONS
-# ==========================
+# =========================
+
+st.subheader(
+"Quick Actions"
+)
 
 
-st.subheader("Quick Actions")
+c1,c2,c3,c4,c5 = st.columns(5)
 
 
-col1,col2,col3,col4,col5 = st.columns(5)
+selected_question = ""
 
 
-quick_question=""
-
-
-with col1:
+with c1:
     if st.button("📊 Excel Help"):
-        quick_question="Give me Excel help"
+        selected_question = "Give me Excel resources"
 
 
-with col2:
+with c2:
     if st.button("🤖 AI Tools"):
-        quick_question="Show me AI resources"
+        selected_question = "Give me AI resources"
 
 
-with col3:
+with c3:
     if st.button("💻 Mainframe"):
-        quick_question="Give me Mainframe learning resources"
+        selected_question = "Give me Mainframe resources"
 
 
-with col4:
+with c4:
     if st.button("📄 Interview Questions"):
-        quick_question="Give me interview questions"
+        selected_question = "Give me interview questions PDF"
 
 
-with col5:
-    if st.button("📁 Download Resources"):
-        quick_question="Give me resource links"
+with c5:
+    if st.button("📁 Templates"):
+        selected_question = "Give me templates"
 
 
 
-# ==========================
-# RESOURCE ROUTER
-# ==========================
+
+# =========================
+# GROQ CONFIG
+# =========================
 
 
-def resource_logic(question):
+try:
+
+    GROQ_KEY = st.secrets["GROQ_API_KEY"]
+
+
+except:
+
+
+    st.error(
+        "GROQ_API_KEY missing in Streamlit Secrets"
+    )
+
+    st.stop()
+
+
+
+llm = ChatGroq(
+
+    model="llama-3.3-70b-versatile",
+
+    groq_api_key=GROQ_KEY,
+
+    temperature=0.2
+
+)
+
+
+
+# =========================
+# RESOURCE LOGIC
+# =========================
+
+
+def get_resource(question):
+
 
     q = question.lower()
 
 
-    if any(x in q for x in [
+
+    # Mainframe
+
+    if any(word in q for word in [
+
         "cobol",
         "jcl",
         "db2",
@@ -123,6 +165,7 @@ def resource_logic(question):
         "vsam",
         "mainframe",
         "interview"
+
     ]):
 
 
@@ -131,22 +174,27 @@ def resource_logic(question):
 📘 Punit Tech Hub Mainframe Resources
 
 
-You can find COBOL, JCL, DB2,
-CICS, VSAM and interview PDFs here:
+COBOL, JCL, DB2, CICS, VSAM
+Interview Questions PDF:
 
 
 https://drive.google.com/drive/u/1/folders/141O87AxooUedcZ5jFHGM5nCB1wxtYYH
 
-
 """
 
 
-    if any(x in q for x in [
+
+    # Excel
+
+
+    if any(word in q for word in [
+
         "excel",
         "formula",
-        "dashboard",
         "pivot",
+        "dashboard",
         "chart"
+
     ]):
 
 
@@ -155,19 +203,25 @@ https://drive.google.com/drive/u/1/folders/141O87AxooUedcZ5jFHGM5nCB1wxtYYH
 📊 Punit Tech Hub Excel Resources
 
 
-Download Excel templates and guides:
+Excel guides, formulas and learning material:
 
 
 https://drive.google.com/drive/u/1/folders/1CwQI4hcSuZOxnweWI25GqjCAAhOy0gOm
 
-
 """
 
 
-    if any(x in q for x in [
+
+    # AI
+
+
+    if any(word in q for word in [
+
         "ai",
         "chatgpt",
-        "prompt"
+        "prompt",
+        "artificial intelligence"
+
     ]):
 
 
@@ -176,13 +230,16 @@ https://drive.google.com/drive/u/1/folders/1CwQI4hcSuZOxnweWI25GqjCAAhOy0gOm
 🤖 Punit Tech Hub AI Resources
 
 
-Explore AI resources:
+AI learning resources:
 
 
 https://drive.google.com/drive/u/1/folders/1yFvmGPKl5O22t9XoY2WWGXokyi2Q6OP2
 
-
 """
+
+
+
+    # Templates
 
 
     if "template" in q:
@@ -198,8 +255,11 @@ Download templates:
 
 https://drive.google.com/drive/u/1/folders/1Iww2a-kGPZagXyoBHr-qGkDCuFP5poaA
 
-
 """
+
+
+
+    # Resume
 
 
     if "resume" in q:
@@ -207,13 +267,16 @@ https://drive.google.com/drive/u/1/folders/1Iww2a-kGPZagXyoBHr-qGkDCuFP5poaA
 
         return """
 
-Create your resume using:
+Create your resume using Punit AI Resume Builder:
 
 
 https://pth-ai-resume-builder.streamlit.app/
 
-
 """
+
+
+
+    # Analyzer
 
 
     if "analyze" in q:
@@ -221,191 +284,223 @@ https://pth-ai-resume-builder.streamlit.app/
 
         return """
 
-Analyze your Excel file using:
+Analyze your Excel files:
 
 
 https://pth-ai-data-analyzer.streamlit.app/
 
-
 """
+
 
 
     return None
 
 
 
-# ==========================
+
+# =========================
 # ANALYTICS
-# ==========================
+# =========================
 
 
-def save_analytics(question,category,feedback=""):
+def save_log(question, feedback=""):
 
 
-    file="chatbot_analytics.csv"
+    file = "chatbot_analytics.csv"
 
 
-    data={
+    new_data = pd.DataFrame(
+
+        {
+
         "Date":[datetime.now()],
+
         "Question":[question],
-        "Category":[category],
+
         "Feedback":[feedback]
-    }
 
+        }
 
-    df=pd.DataFrame(data)
+    )
 
 
     if os.path.exists(file):
 
-        old=pd.read_csv(file)
 
-        df=pd.concat(
-            [old,df],
+        old = pd.read_csv(file)
+
+
+        new_data = pd.concat(
+
+            [old,new_data],
+
             ignore_index=True
+
         )
 
 
-    df.to_csv(file,index=False)
+
+    new_data.to_csv(
+
+        file,
+
+        index=False
+
+    )
 
 
 
-# ==========================
-# GEMINI
-# ==========================
 
 
-llm=ChatGoogleGenerativeAI(
+# =========================
+# CHAT
+# =========================
 
-    model="gemini-2.0-flash",
 
-    google_api_key=GOOGLE_API_KEY
+question = st.chat_input(
+
+    "Ask your question..."
 
 )
 
 
 
-# ==========================
-# CHAT INPUT
-# ==========================
+if selected_question:
 
+    question = selected_question
 
-question=st.chat_input(
-"Ask your question..."
-)
-
-
-if quick_question:
-
-    question=quick_question
 
 
 
 if question:
 
 
-    st.chat_message("user").write(question)
+    st.chat_message(
+
+        "user"
+
+    ).write(question)
 
 
 
-    resource=resource_logic(question)
+    resource = get_resource(question)
 
 
 
     if resource:
 
 
-        answer=resource
+        answer = resource
+
 
 
     else:
 
 
-        prompt=f"""
-
+        prompt = f"""
 
 You are Punit AI Assistant.
 
 
-Answer only related to:
+Help users with:
+
 
 Excel
+
 AI
+
+ChatGPT
+
 Data Analytics
-Mainframe
+
+Mainframe Technologies
 
 
-User question:
+Give simple beginner friendly answers.
+
+
+User:
 
 {question}
-
-
-Give practical answer.
 
 """
 
 
-        answer=llm.invoke(prompt).content
+        response = llm.invoke(prompt)
+
+
+        answer = response.content
 
 
 
-    st.chat_message("assistant").write(answer)
+    st.chat_message(
+
+        "assistant"
+
+    ).write(answer)
 
 
 
-    save_analytics(
-        question,
-        "Auto"
-    )
+    save_log(question)
 
 
 
     st.divider()
 
 
-    st.write("Was this helpful?")
+    st.write(
+
+        "Was this helpful?"
+
+    )
 
 
-    c1,c2=st.columns(2)
+    a,b = st.columns(2)
 
 
-    with c1:
+
+    with a:
+
 
         if st.button("👍 Yes"):
 
-            save_analytics(
+            save_log(
+
                 question,
-                "Feedback",
+
                 "Yes"
+
             )
 
 
-    with c2:
+
+    with b:
+
 
         if st.button("👎 No"):
 
-            save_analytics(
+            save_log(
+
                 question,
-                "Feedback",
+
                 "No"
+
             )
 
 
 
-# ==========================
+
+
+# =========================
 # FOOTER
-# ==========================
+# =========================
 
 
-st.markdown(
-"""
----
+st.divider()
 
-🚀 Powered by **Punit Tech Hub AI**
 
-Excel • AI • Data Analytics • Mainframe
+st.caption(
 
-Learn • Implement • Grow
+"🚀 Powered by Punit Tech Hub AI | Learn • Implement • Grow"
 
-"""
 )
