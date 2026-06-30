@@ -1,7 +1,12 @@
-import streamlit as st
 import os
+import streamlit as st
 import requests
+
 from bs4 import BeautifulSoup
+
+from langchain_core.documents import Document
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langchain_google_genai import (
     ChatGoogleGenerativeAI,
@@ -9,24 +14,24 @@ from langchain_google_genai import (
 )
 
 from langchain_community.vectorstores import FAISS
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 
 
-# -------------------------------
-# Page Config
-# -------------------------------
+
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
 
 st.set_page_config(
     page_title="Punit AI Learning Assistant",
     page_icon="🤖",
-    layout="wide"
+    layout="centered"
 )
 
 
-# -------------------------------
-# Gemini API
-# -------------------------------
+
+# -----------------------------
+# API KEY
+# -----------------------------
 
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
@@ -34,9 +39,42 @@ os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 
 
 
-# -------------------------------
-# Website Knowledge Base
-# -------------------------------
+# -----------------------------
+# WEBSITE RESOURCES
+# -----------------------------
+
+RESOURCES = {
+
+"Excel":
+"https://www.punittechhub.com/excel-tutorials",
+
+"Mainframe":
+"https://www.punittechhub.com/mainframe-tutorials",
+
+"COBOL":
+"https://www.punittechhub.com/cobol-tutorials",
+
+"JCL":
+"https://www.punittechhub.com/jcl-tutorials",
+
+"DB2":
+"https://www.punittechhub.com/db2-tutorials",
+
+"CICS":
+"https://www.punittechhub.com/cics-tutorials",
+
+"VSAM":
+"https://www.punittechhub.com/vsam-tutorials",
+
+"AI":
+"https://www.punittechhub.com/ai-learning-resources",
+
+"All":
+"https://www.punittechhub.com/all-resources"
+
+}
+
+
 
 URLS = [
 
@@ -70,27 +108,60 @@ URLS = [
 
 
 
-# -------------------------------
-# Load Website Data
-# -------------------------------
+# -----------------------------
+# CREATE KNOWLEDGE BASE
+# -----------------------------
 
 
-@st.cache_resource
-def load_database():
+@st.cache_resource(ttl=86400)
+def create_database():
+
+
+    if os.path.exists("punit_vector_db"):
+
+
+        embeddings = GoogleGenerativeAIEmbeddings(
+
+            model="models/text-embedding-004",
+
+            google_api_key=GOOGLE_API_KEY
+
+        )
+
+
+        return FAISS.load_local(
+
+            "punit_vector_db",
+
+            embeddings,
+
+            allow_dangerous_deserialization=True
+
+        )
+
 
 
     documents=[]
 
 
+
     for url in URLS:
+
 
         try:
 
-            r=requests.get(url,timeout=10)
+            response=requests.get(
+                url,
+                timeout=15
+            )
+
 
             soup=BeautifulSoup(
-                r.text,
+
+                response.text,
+
                 "html.parser"
+
             )
 
 
@@ -100,40 +171,71 @@ def load_database():
 
 
             documents.append(
+
                 Document(
+
                     page_content=text,
+
                     metadata={
                         "source":url
                     }
+
                 )
+
             )
 
 
-        except Exception as e:
+        except Exception:
+
 
             pass
 
 
 
+
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150
+
+        chunk_size=800,
+
+        chunk_overlap=100
+
     )
 
 
-    docs = splitter.split_documents(
+
+    chunks = splitter.split_documents(
+
         documents
+
     )
+
+
 
 
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001"
+
+        model="models/text-embedding-004",
+
+        google_api_key=GOOGLE_API_KEY
+
     )
 
 
+
     db = FAISS.from_documents(
-        docs,
+
+        chunks,
+
         embeddings
+
+    )
+
+
+
+    db.save_local(
+
+        "punit_vector_db"
+
     )
 
 
@@ -141,17 +243,32 @@ def load_database():
 
 
 
-# -------------------------------
-# Load AI
-# -------------------------------
 
-db = load_database()
 
+# -----------------------------
+# LOAD DATABASE
+# -----------------------------
+
+with st.spinner(
+"Loading Punit Tech Hub Knowledge..."
+):
+
+    database=create_database()
+
+
+
+
+
+# -----------------------------
+# GEMINI MODEL
+# -----------------------------
 
 
 llm = ChatGoogleGenerativeAI(
 
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
+
+    google_api_key=GOOGLE_API_KEY,
 
     temperature=0.3
 
@@ -159,9 +276,11 @@ llm = ChatGoogleGenerativeAI(
 
 
 
-# -------------------------------
-# UI
-# -------------------------------
+
+
+# -----------------------------
+# HEADER
+# -----------------------------
 
 
 st.title(
@@ -170,9 +289,52 @@ st.title(
 
 
 st.write(
-"Ask questions about Excel, AI, ChatGPT, Data Analysis and Mainframe."
+"""
+Your AI assistant for:
+
+📊 Excel  
+🤖 AI & ChatGPT  
+📈 Data Analytics  
+💻 Mainframe  
+📝 COBOL  
+⚙️ JCL  
+🗄️ DB2  
+📂 CICS / VSAM
+"""
 )
 
+
+
+
+
+# -----------------------------
+# CHAT MEMORY
+# -----------------------------
+
+
+if "messages" not in st.session_state:
+
+    st.session_state.messages=[]
+
+
+
+for message in st.session_state.messages:
+
+
+    with st.chat_message(
+        message["role"]
+    ):
+
+        st.write(
+            message["content"]
+        )
+
+
+
+
+# -----------------------------
+# QUESTION
+# -----------------------------
 
 
 question = st.chat_input(
@@ -184,23 +346,56 @@ question = st.chat_input(
 if question:
 
 
+
+    st.session_state.messages.append(
+
+        {
+        "role":"user",
+        "content":question
+        }
+
+    )
+
+
     with st.chat_message("user"):
 
         st.write(question)
 
 
 
-    docs = db.similarity_search(
+    # Search knowledge
+
+    docs = database.similarity_search(
+
         question,
+
         k=3
+
     )
+
 
 
     context=""
 
-    for d in docs:
 
-        context += d.page_content
+    sources=[]
+
+
+
+    for doc in docs:
+
+
+        context += doc.page_content
+
+
+        sources.append(
+
+            doc.metadata.get(
+                "source"
+            )
+
+        )
+
 
 
 
@@ -208,42 +403,79 @@ if question:
 
 You are Punit AI Learning Assistant.
 
-Answer only related to:
-- Excel
-- AI
-- ChatGPT
-- Data Analysis
-- Mainframe
-- COBOL
-- JCL
-- DB2
-- CICS
-- VSAM
+Answer only questions related to:
+
+Excel
+AI
+ChatGPT
+Data Analytics
+Mainframe
+COBOL
+JCL
+DB2
+CICS
+VSAM
 
 
-Use this knowledge:
+Use this information:
 
 {context}
 
 
-Question:
+User Question:
 
 {question}
 
 
-If answer is not available say:
+If information is not available,
+say:
 
-"I don't have this information in Punit Tech Hub resources."
+"I could not find this in Punit Tech Hub resources."
 
 """
 
 
-    response = llm.invoke(prompt)
+
+    response=llm.invoke(
+
+        prompt
+
+    )
+
+
+
+    answer=response.content
 
 
 
     with st.chat_message("assistant"):
 
-        st.write(
-            response.content
+
+        st.write(answer)
+
+
+
+        st.markdown(
+        "---"
         )
+
+
+        st.write(
+        "📚 Related Resources:"
+        )
+
+
+        for source in sources:
+
+            st.write(source)
+
+
+
+    st.session_state.messages.append(
+
+        {
+        "role":"assistant",
+        "content":answer
+        }
+
+    )
