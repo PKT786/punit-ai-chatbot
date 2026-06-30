@@ -1,18 +1,17 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-
 from langchain_groq import ChatGroq
 
 
 
-# =====================================
-# PAGE SETTINGS
-# =====================================
+# ==========================
+# PAGE CONFIG
+# ==========================
 
 st.set_page_config(
 
-    page_title="Punit AI Learning Assistant",
+    page_title="Punit AI Assistant",
 
     page_icon="🤖",
 
@@ -22,39 +21,138 @@ st.set_page_config(
 
 
 
-# =====================================
-# GEMINI API KEY
-# =====================================
+# ==========================
+# BRANDING
+# ==========================
 
 
-try:
-
-    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-
-except:
+col1, col2 = st.columns([1,5])
 
 
-    st.error(
-        "Gemini API Key not found. Add GROQ_API_KEY in Streamlit Secrets."
+with col1:
+
+    st.image(
+        "assets/punit_logo.png",
+        width=120
     )
 
-    st.stop()
+
+with col2:
+
+    st.title(
+        "🤖 Punit AI Assistant"
+    )
+
+    st.caption(
+        "AI Learning Assistant by Punit Tech Hub"
+    )
 
 
 
-# =====================================
-# GEMINI MODEL
-# =====================================
+
+st.markdown("---")
 
 
-GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+
+# ==========================
+# WELCOME
+# ==========================
+
+
+st.success(
+"""
+Welcome to Punit AI Assistant 🤖
+
+
+I can help you with:
+
+
+📊 Excel  
+🤖 Artificial Intelligence  
+📈 Data Analytics  
+💻 Mainframe Technologies  
+
+
+Ask me anything!
+"""
+)
+
+
+
+# ==========================
+# QUICK BUTTONS
+# ==========================
+
+
+st.subheader(
+"Explore Resources"
+)
+
+
+c1,c2,c3,c4 = st.columns(4)
+
+
+
+if c1.button("📊 Excel Tutorials"):
+
+    st.markdown(
+
+    "https://www.punittechhub.com/excel-tutorials"
+
+    )
+
+
+
+if c2.button("🤖 AI Resources"):
+
+    st.markdown(
+
+    "https://www.punittechhub.com/ai-learning-resources"
+
+    )
+
+
+
+if c3.button("💻 Mainframe Guides"):
+
+    st.markdown(
+
+    "https://www.punittechhub.com/mainframe-tutorials"
+
+    )
+
+
+
+if c4.button("⭐ Premium Resources"):
+
+    st.markdown(
+
+    "https://www.punittechhub.com/services"
+
+    )
+
+
+
+st.markdown("---")
+
+
+
+
+
+# ==========================
+# GROQ API
+# ==========================
+
+
+GROQ_KEY = st.secrets["GROQ_API_KEY"]
+
 
 
 llm = ChatGroq(
 
     model="llama-3.3-70b-versatile",
 
-    groq_api_key=GROQ_API_KEY,
+    groq_api_key=GROQ_KEY,
 
     temperature=0.2
 
@@ -63,12 +161,13 @@ llm = ChatGroq(
 
 
 
-# =====================================
-# PUNIT TECH HUB RESOURCES
-# =====================================
+# ==========================
+# WEBSITE KNOWLEDGE
+# ==========================
 
 
-RESOURCE_LINKS = [
+URLS=[
+
 
 "https://www.punittechhub.com/all-resources",
 
@@ -82,133 +181,63 @@ RESOURCE_LINKS = [
 
 "https://www.punittechhub.com/db2-tutorials",
 
-"https://www.punittechhub.com/cics-tutorials",
+"https://www.punittechhub.com/ai-learning-resources"
 
-"https://www.punittechhub.com/vsam-tutorials",
-
-"https://www.punittechhub.com/mainframe-interview-questions",
-
-"https://www.punittechhub.com/excel-formulas-guide",
-
-"https://www.punittechhub.com/data-analysis-tutorials",
-
-"https://www.punittechhub.com/excel-charts-tutorials",
-
-"https://www.punittechhub.com/advanced-excel-tutorials"
 
 ]
 
 
 
 
-
-# =====================================
-# LOAD WEBSITE CONTENT
-# =====================================
-
-
 @st.cache_data(ttl=86400)
 
-
-def get_website_content():
-
-
-    all_content = ""
+def load_content():
 
 
-    for url in RESOURCE_LINKS:
+    data=""
+
+
+    for url in URLS:
 
 
         try:
 
 
-            response = requests.get(
-
-                url,
-
-                timeout=10
-
-            )
+            r=requests.get(url,timeout=10)
 
 
-            soup = BeautifulSoup(
+            soup=BeautifulSoup(
 
-                response.text,
+                r.text,
 
                 "html.parser"
 
             )
 
 
-            text = soup.get_text(
-
-                separator=" "
-
-            )
-
-
-            all_content += "\n\n" + text
+            data += soup.get_text()
 
 
 
-        except Exception:
+        except:
 
 
-            continue
+            pass
 
 
 
-    # Gemini free limit safe
+    return data[:10000]
 
-    return all_content[:6000]
+
+
+knowledge=load_content()
 
 
 
 
-
-knowledge = get_website_content()
-
-
-
-
-
-# =====================================
-# HEADER
-# =====================================
-
-
-st.title(
-"🤖 Punit AI Learning Assistant"
-)
-
-
-st.write(
-
-"""
-Ask anything about:
-
-📊 Excel  
-🤖 AI / ChatGPT  
-📈 Data Analysis  
-💻 Mainframe  
-📝 COBOL  
-⚙️ JCL  
-🗄️ DB2  
-📂 CICS  
-📁 VSAM  
-
-Powered by Punit Tech Hub resources.
-"""
-
-)
-
-
-
-
-
-# =====================================
+# ==========================
 # CHAT MEMORY
-# =====================================
+# ==========================
 
 
 if "messages" not in st.session_state:
@@ -218,51 +247,39 @@ if "messages" not in st.session_state:
 
 
 
-for message in st.session_state.messages:
+for msg in st.session_state.messages:
 
 
-    with st.chat_message(
+    with st.chat_message(msg["role"]):
 
-        message["role"]
-
-    ):
-
-        st.write(
-
-            message["content"]
-
-        )
+        st.write(msg["content"])
 
 
 
 
-
-# =====================================
-# USER QUESTION
-# =====================================
+# ==========================
+# USER INPUT
+# ==========================
 
 
 question = st.chat_input(
 
-    "Ask your question..."
+"Ask your question..."
 
 )
-
-
 
 
 
 if question:
 
 
-
     st.session_state.messages.append(
 
         {
 
-            "role":"user",
+        "role":"user",
 
-            "content":question
+        "content":question
 
         }
 
@@ -272,125 +289,91 @@ if question:
 
     with st.chat_message("user"):
 
-
         st.write(question)
 
 
 
-    prompt = f"""
 
-You are Punit AI Learning Assistant.
+    prompt=f"""
 
-Your job is to answer users related to:
-
-- Excel
-- Microsoft Excel formulas
-- Data Analysis
-- AI
-- ChatGPT
-- Generative AI
-- Mainframe
-- COBOL
-- JCL
-- DB2
-- CICS
-- VSAM
+You are Punit AI Assistant.
 
 
-Use this Punit Tech Hub knowledge:
+You help users with:
+
+
+Excel
+
+AI
+
+ChatGPT
+
+Data Analytics
+
+Mainframe
+
+COBOL
+
+JCL
+
+DB2
+
+
+Use this knowledge:
 
 
 {knowledge}
 
 
 
-User Question:
+Special rules:
+
+
+If user asks:
+
+"create resume"
+
+reply:
+
+
+You can use Punit AI Resume Builder:
+
+https://pth-ai-resume-builder.streamlit.app/
+
+
+If user asks:
+
+"analyze excel"
+
+reply:
+
+
+Try Punit AI Data Analyzer:
+
+https://pth-ai-data-analyzer.streamlit.app/
+
+
+Answer professionally.
+
+Question:
 
 {question}
 
 
-
-Instructions:
-
-1. Give simple beginner friendly explanation.
-
-2. Add examples where useful.
-
-3. If related resource exists mention:
-
-https://www.punittechhub.com/all-resources
-
-
-4. If information is not available say:
-
-"I could not find this topic in Punit Tech Hub resources."
-
 """
+
 
 
     with st.chat_message("assistant"):
 
 
-        with st.spinner(
-
-            "Thinking..."
-
-        ):
+        response=llm.invoke(prompt)
 
 
-            try:
+        answer=response.content
 
 
-                response = llm.invoke(
-
-                    prompt
-
-                )
-
-
-                answer = response.content
-
-
-
-                st.write(answer)
-
-
-
-                st.markdown(
-
-                """
-
-                ---
-
-                📚 Explore more:
-
-                https://www.punittechhub.com/all-resources
-
-                """
-
-                )
-
-
-
-            except Exception as e:
-
-
-                answer = (
-
-                    "Sorry, AI service is temporarily unavailable."
-
-                )
-
-
-                st.error(
-
-                    str(e)
-
-                )
-
-
-                st.write(answer)
-
+        st.write(answer)
 
 
 
@@ -398,10 +381,53 @@ https://www.punittechhub.com/all-resources
 
         {
 
-            "role":"assistant",
+        "role":"assistant",
 
-            "content":answer
+        "content":answer
 
         }
 
     )
+
+
+
+
+# ==========================
+# ANALYTICS
+# ==========================
+
+
+if "questions" not in st.session_state:
+
+    st.session_state.questions=[]
+
+
+
+st.session_state.questions.append(question)
+
+
+
+with st.sidebar:
+
+
+    st.subheader(
+    "📊 Usage Analytics"
+    )
+
+
+    st.write(
+
+    "Questions asked:",
+
+    len(st.session_state.questions)
+
+    )
+
+
+    st.write(
+
+    "Popular topics will appear here later"
+
+    )
+
+
