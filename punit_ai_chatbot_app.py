@@ -1,21 +1,25 @@
-import streamlit as st
 import os
+import streamlit as st
 
-from openai import OpenAI
-
-from langchain_community.document_loaders import PyPDFLoader
-
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_google_genai import (
+    ChatGoogleGenerativeAI,
+    GoogleGenerativeAIEmbeddings
+)
 
 from langchain_community.vectorstores import FAISS
 
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.document_loaders import WebBaseLoader
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from langchain.chains import ConversationalRetrievalChain
+
+from langchain.memory import ConversationBufferMemory
 
 
-
-# -----------------------------
+# ---------------------------------------------------
 # PAGE CONFIG
-# -----------------------------
+# ---------------------------------------------------
 
 st.set_page_config(
     page_title="Punit AI Learning Assistant",
@@ -24,124 +28,110 @@ st.set_page_config(
 )
 
 
-# -----------------------------
-# OPENAI CONNECTION
-# -----------------------------
+# ---------------------------------------------------
+# TITLE
+# ---------------------------------------------------
 
-client = OpenAI(
-    api_key=st.secrets["OPENAI_API_KEY"]
+st.title("🤖 Punit AI Learning Assistant")
+
+st.write(
+    """
+Ask questions about:
+
+📊 Excel  
+🤖 AI / ChatGPT  
+💻 Mainframe  
+📝 COBOL  
+⚙️ JCL  
+🗄️ DB2  
+📡 CICS  
+📂 VSAM  
+
+Answers are generated from Punit Tech Hub resources.
+"""
 )
 
 
 
-# -----------------------------
-# RESOURCE LINKS
-# -----------------------------
+# ---------------------------------------------------
+# GEMINI KEY
+# ---------------------------------------------------
 
-resources = {
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
-"Excel":
+
+
+# ---------------------------------------------------
+# RESOURCE URLS
+# ---------------------------------------------------
+
+RESOURCE_URLS = [
+
+"https://www.punittechhub.com/all-resources",
+
 "https://www.punittechhub.com/excel-tutorials",
 
-"AI":
-"https://www.punittechhub.com/ai-learning-resources",
-
-"Mainframe":
 "https://www.punittechhub.com/mainframe-tutorials",
 
-"COBOL":
 "https://www.punittechhub.com/cobol-tutorials",
 
-"JCL":
 "https://www.punittechhub.com/jcl-tutorials",
 
-"DB2":
 "https://www.punittechhub.com/db2-tutorials",
 
-"CICS":
 "https://www.punittechhub.com/cics-tutorials",
 
-"VSAM":
 "https://www.punittechhub.com/vsam-tutorials",
 
-"Interview":
 "https://www.punittechhub.com/mainframe-interview-questions",
 
-"Formula":
 "https://www.punittechhub.com/excel-formulas-guide",
 
-"Data Analysis":
 "https://www.punittechhub.com/data-analysis-tutorials",
 
-"Charts":
 "https://www.punittechhub.com/excel-charts-tutorials",
 
-"Advanced Excel":
-"https://www.punittechhub.com/advanced-excel-tutorials",
+"https://www.punittechhub.com/advanced-excel-tutorials"
 
-"All Resources":
-"https://www.punittechhub.com/all-resources"
-
-}
+]
 
 
 
-# -----------------------------
-# LOAD KNOWLEDGE BASE
-# -----------------------------
-
+# ---------------------------------------------------
+# LOAD WEBSITE KNOWLEDGE
+# ---------------------------------------------------
 
 @st.cache_resource
 def load_database():
 
 
-    if os.path.exists("punit_vector_db"):
-
-        embeddings = OpenAIEmbeddings()
-
-        return FAISS.load_local(
-            "punit_vector_db",
-            embeddings,
-            allow_dangerous_deserialization=True
-        )
+    documents = []
 
 
+    for url in RESOURCE_URLS:
 
-    documents=[]
+        try:
+
+            loader = WebBaseLoader(url)
+
+            docs = loader.load()
+
+            documents.extend(docs)
 
 
-    folder="knowledge_base"
+        except Exception as e:
 
-
-    if not os.path.exists(folder):
-
-        os.makedirs(folder)
-
-
-    for file in os.listdir(folder):
-
-        if file.endswith(".pdf"):
-
-            loader = PyPDFLoader(
-                f"{folder}/{file}"
+            st.warning(
+                f"Unable to load {url}"
             )
-
-            documents.extend(
-                loader.load()
-            )
-
-
-    if len(documents)==0:
-
-        return None
 
 
 
     splitter = RecursiveCharacterTextSplitter(
 
-        chunk_size=800,
+        chunk_size=1000,
 
-        chunk_overlap=150
+        chunk_overlap=200
 
     )
 
@@ -151,7 +141,14 @@ def load_database():
     )
 
 
-    embeddings = OpenAIEmbeddings()
+
+    embeddings = GoogleGenerativeAIEmbeddings(
+
+        model="models/embedding-001",
+
+        google_api_key=GOOGLE_API_KEY
+
+    )
 
 
 
@@ -164,40 +161,89 @@ def load_database():
     )
 
 
-    db.save_local(
-        "punit_vector_db"
-    )
-
-
     return db
 
 
 
 
-db = load_database()
+
+# ---------------------------------------------------
+# LOAD CHATBOT
+# ---------------------------------------------------
+
+@st.cache_resource
+def create_chain():
+
+
+    db = load_database()
 
 
 
-# -----------------------------
-# HEADER
-# -----------------------------
+    llm = ChatGoogleGenerativeAI(
 
+        model="gemini-2.0-flash",
 
-st.title(
-"🤖 Punit AI Learning Assistant"
-)
+        google_api_key=GOOGLE_API_KEY,
 
+        temperature=0.3
 
-st.write(
-"Ask questions about Excel, AI, ChatGPT, Data Analysis and Mainframe technologies."
-)
+    )
 
 
 
-# -----------------------------
-# CHAT MEMORY
-# -----------------------------
+    memory = ConversationBufferMemory(
 
+        memory_key="chat_history",
+
+        return_messages=True
+
+    )
+
+
+
+    chain = ConversationalRetrievalChain.from_llm(
+
+        llm=llm,
+
+        retriever=db.as_retriever(
+            search_kwargs={
+                "k":5
+            }
+        ),
+
+        memory=memory,
+
+        return_source_documents=True
+
+    )
+
+
+    return chain
+
+
+
+
+
+# ---------------------------------------------------
+# START CHATBOT
+# ---------------------------------------------------
+
+if "chain" not in st.session_state:
+
+
+    with st.spinner(
+        "Loading Punit Tech Hub knowledge..."
+    ):
+
+        st.session_state.chain = create_chain()
+
+
+
+
+
+# ---------------------------------------------------
+# CHAT HISTORY
+# ---------------------------------------------------
 
 if "messages" not in st.session_state:
 
@@ -205,26 +251,27 @@ if "messages" not in st.session_state:
 
 
 
-for message in st.session_state.messages:
+for msg in st.session_state.messages:
 
 
     with st.chat_message(
-        message["role"]
+        msg["role"]
     ):
 
         st.write(
-            message["content"]
+            msg["content"]
         )
 
 
 
-# -----------------------------
-# USER INPUT
-# -----------------------------
 
+
+# ---------------------------------------------------
+# USER INPUT
+# ---------------------------------------------------
 
 question = st.chat_input(
-"Ask your question..."
+    "Ask your question..."
 )
 
 
@@ -232,14 +279,14 @@ question = st.chat_input(
 if question:
 
 
+    st.session_state.messages.append(
 
-    st.session_state.messages.append({
+        {
+            "role":"user",
+            "content":question
+        }
 
-        "role":"user",
-
-        "content":question
-
-    })
+    )
 
 
     with st.chat_message("user"):
@@ -248,202 +295,55 @@ if question:
 
 
 
-
-    # -----------------------------
-    # TOPIC DETECTION
-    # -----------------------------
-
-
-    topic="All Resources"
-
-
-    q=question.lower()
-
-
-
-    if "excel" in q or "formula" in q or "pivot" in q:
-
-        topic="Excel"
-
-
-
-    elif "cobol" in q:
-
-        topic="COBOL"
-
-
-
-    elif "jcl" in q:
-
-        topic="JCL"
-
-
-
-    elif "db2" in q:
-
-        topic="DB2"
-
-
-
-    elif "cics" in q:
-
-        topic="CICS"
-
-
-
-    elif "vsam" in q:
-
-        topic="VSAM"
-
-
-
-    elif "mainframe" in q:
-
-        topic="Mainframe"
-
-
-
-    elif "ai" in q or "chatgpt" in q:
-
-        topic="AI"
-
-
-
-    elif "dashboard" in q or "analysis" in q:
-
-        topic="Data Analysis"
-
-
-
-
-
-    # -----------------------------
-    # SEARCH KNOWLEDGE
-    # -----------------------------
-
-
-    context=""
-
-
-
-    if db:
-
-
-        docs=db.similarity_search(
-
-            question,
-
-            k=3
-
-        )
-
-
-        for doc in docs:
-
-            context += doc.page_content
-
-
-
-
-    else:
-
-
-        context = """
-        No PDF uploaded yet.
-        Answer using general knowledge.
-        """
-
-
-
-
-
-    # -----------------------------
-    # AI RESPONSE
-    # -----------------------------
-
-
-    response = client.chat.completions.create(
-
-
-        model="gpt-4.1-mini",
-
-
-        messages=[
-
-
-        {
-
-
-        "role":"system",
-
-
-        "content":f"""
-
-You are Punit AI Learning Assistant.
-
-You answer only Excel,
-AI, ChatGPT, Data Analytics,
-and Mainframe questions.
-
-Use this Punit Tech Hub knowledge:
-
-{context}
-
-
-If the answer is not available,
-say:
-'I could not find this in Punit Tech Hub resources.'
-
-"""
-
-
-        },
-
-
-        {
-
-
-        "role":"user",
-
-        "content":question
-
-        }
-
-
-        ]
-
-    )
-
-
-
-    answer = response.choices[0].message.content
-
-
-
-
     with st.chat_message("assistant"):
 
 
-        st.write(answer)
+        with st.spinner(
+            "Searching Punit Tech Hub resources..."
+        ):
+
+
+            response = (
+                st.session_state.chain(
+                    {
+                        "question":question
+                    }
+                )
+            )
+
+
+            answer = response["answer"]
 
 
 
-        st.markdown(
-        f"""
-        ---
-        📚 Related Learning Resource:
-
-        👉 [{topic}]
-        ({resources.get(topic,resources["All Resources"])})
-        """
-        )
+            st.write(answer)
 
 
 
-    st.session_state.messages.append({
+            st.subheader(
+                "📚 Sources"
+            )
 
-        "role":"assistant",
 
-        "content":answer
+            for doc in response["source_documents"]:
 
-    })
+
+                st.write(
+
+                    doc.metadata.get(
+                        "source",
+                        "Punit Tech Hub"
+                    )
+
+                )
+
+
+
+    st.session_state.messages.append(
+
+        {
+            "role":"assistant",
+            "content":answer
+        }
+
+    )
