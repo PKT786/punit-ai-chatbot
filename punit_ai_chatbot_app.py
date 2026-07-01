@@ -5,22 +5,23 @@ from datetime import datetime
 import os
 
 
-# -----------------------------
+# ==========================
 # PAGE CONFIG
-# -----------------------------
+# ==========================
 
 st.set_page_config(
-    page_title="Punit AI Learning Assistant",
+    page_title="Punit AI Assistant",
     page_icon="🤖",
     layout="wide"
 )
 
 
-# -----------------------------
-# API KEY
-# -----------------------------
+# ==========================
+# GROQ SETUP
+# ==========================
 
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+
 
 client = Groq(
     api_key=GROQ_API_KEY
@@ -28,22 +29,52 @@ client = Groq(
 
 
 
-# -----------------------------
-# LOGO
-# -----------------------------
+# ==========================
+# RESOURCES
+# ==========================
 
-if os.path.exists("assets/punit_logo.png"):
+
+RESOURCES = {
+
+"mainframe":
+"https://drive.google.com/drive/u/1/folders/141O87AxooUedcZ5jFHGM5nCB1wxtYYH",
+
+
+"ai":
+"https://drive.google.com/drive/u/1/folders/1yFvmGPKl5O22t9XoY2WWGXokyi2Q6OP2",
+
+
+"excel":
+"https://drive.google.com/drive/u/1/folders/1CwQI4hcSuZOxnweWI25GqjCAAhOy0gOm",
+
+
+"template":
+"https://drive.google.com/drive/u/1/folders/1Iww2a-kGPZagXyoBHr-qGkDCuFP5poaA"
+
+}
+
+
+
+# ==========================
+# LOGO
+# ==========================
+
+
+if os.path.exists(
+    "assets/punit_logo.png"
+):
 
     st.image(
         "assets/punit_logo.png",
-        width=180
+        width=220
     )
 
 
 
-# -----------------------------
-# TITLE
-# -----------------------------
+# ==========================
+# HEADER
+# ==========================
+
 
 st.title(
     "🤖 Punit AI Learning Assistant"
@@ -54,173 +85,164 @@ st.markdown(
 """
 ## Welcome to Punit AI Assistant 🚀
 
+
 I can help you with:
 
+
 📊 Excel formulas & dashboards  
-🤖 AI tools & prompts  
+
+
+🤖 AI tools & ChatGPT prompts  
+
+
 📈 Data Analytics  
+
+
 💻 COBOL, JCL, DB2, CICS, VSAM  
+
+
 📄 Interview preparation PDFs  
+
 
 Ask me anything!
 """
 )
 
 
-# -----------------------------
-# SESSION CHAT HISTORY
-# -----------------------------
+st.divider()
+
+
+
+# ==========================
+# SESSION MEMORY
+# ==========================
+
 
 if "messages" not in st.session_state:
 
-    st.session_state.messages = []
+    st.session_state.messages=[]
 
 
-
-# -----------------------------
-# ANALYTICS
-# -----------------------------
 
 if "analytics" not in st.session_state:
 
-    st.session_state.analytics = []
+    st.session_state.analytics=[]
 
 
 
-# -----------------------------
-# QUICK BUTTONS
-# -----------------------------
 
-
-st.subheader("🔥 Popular Questions")
-
-
-col1,col2,col3,col4 = st.columns(4)
-
-
-questions = [
-
-"Top COBOL interview questions",
-
-"Excel dashboard ideas",
-
-"Best AI prompts",
-
-"Create resume"
-
-]
-
-
-buttons = [
-
-col1,
-col2,
-col3,
-col4
-
-]
-
-
-for btn,q in zip(buttons,questions):
-
-    if btn.button(q):
-
-        st.session_state.messages.append(
-            {
-            "role":"user",
-            "content":q
-            }
-        )
-
-
-
-# -----------------------------
-# RESOURCE LINKS
-# -----------------------------
-
-
-RESOURCES = {
-
-"mainframe":
-"https://drive.google.com/drive/u/1/folders/141O87AxooUedcZ5jFHGM5nCB1wxtYYH",
-
-"ai":
-"https://drive.google.com/drive/u/1/folders/1yFvmGPKl5O22t9XoY2WWGXokyi2Q6OP2",
-
-"excel":
-"https://drive.google.com/drive/u/1/folders/1CwQI4hcSuZOxnweWI25GqjCAAhOy0gOm",
-
-"template":
-"https://drive.google.com/drive/u/1/folders/1Iww2a-kGPZagXyoBHr-qGkDCuFP5poaA"
-
-}
-
-
-
-# -----------------------------
+# ==========================
 # CATEGORY DETECTION
-# -----------------------------
+# ==========================
 
 
-def detect_category(text):
+def detect_category(question):
 
-    text=text.lower()
+    q=question.lower()
 
 
-    if any(x in text for x in [
+    if any(
+        x in q for x in
+        [
         "cobol",
         "jcl",
         "db2",
         "cics",
         "vsam",
         "mainframe"
-    ]):
+        ]
+    ):
 
         return "💻 Mainframe",98
 
 
 
-    if any(x in text for x in [
+    elif any(
+        x in q for x in
+        [
         "excel",
         "formula",
         "pivot",
         "dashboard"
-    ]):
+        ]
+    ):
 
         return "📊 Excel",97
 
 
 
-    if any(x in text for x in [
+    elif any(
+        x in q for x in
+        [
         "ai",
         "chatgpt",
         "prompt",
         "resume"
-    ]):
+        ]
+    ):
 
         return "🤖 AI",96
 
 
-    return "General",80
+
+    return "General",85
 
 
 
 
-# -----------------------------
-# SPECIAL REPLIES
-# -----------------------------
+
+# ==========================
+# RESOURCE CARDS
+# ==========================
 
 
-def special_reply(question):
+def resource_card(
+    title,
+    desc,
+    link
+):
+
+
+    st.info(
+
+f"""
+
+### {title}
+
+
+{desc}
+
+
+[📥 Download Resource]({link})
+
+"""
+
+)
+
+
+
+
+
+# ==========================
+# SPECIAL LOGIC
+# ==========================
+
+
+def special_answer(question):
 
     q=question.lower()
 
 
+
     if "resume" in q:
+
 
         return """
 
-You can use Punit AI Resume Builder 🚀
+You can create your professional resume using:
+
+
+🚀 Punit AI Resume Builder
 
 
 https://pth-ai-resume-builder.streamlit.app/
@@ -229,17 +251,32 @@ https://pth-ai-resume-builder.streamlit.app/
 """
 
 
-    if "analyze excel" in q or "data analyzer" in q:
+
+    if (
+        "analyze excel" in q
+        or
+        "data analyzer" in q
+    ):
+
 
         return """
 
-Try Punit AI Data Analyzer 📊
+Try Punit AI Data Analyzer:
+
+
+📊 Upload Excel/CSV
+
+Get:
+✔ Insights
+✔ Charts
+✔ Summary
 
 
 https://pth-ai-data-analyzer.streamlit.app/
 
 
 """
+
 
 
     if (
@@ -250,38 +287,16 @@ https://pth-ai-data-analyzer.streamlit.app/
         "jcl" in q
     ):
 
-        return f"""
 
-I recommend these Mainframe resources:
+        return "MAINFRAME_RESOURCE"
 
-💻 COBOL Interview Questions  
-💻 JCL Guides  
-💻 Mainframe Learning PDFs
-
-
-Download:
-
-{RESOURCES["mainframe"]}
-
-"""
 
 
     if "excel" in q:
 
-        return f"""
 
-Excel learning resources:
+        return "EXCEL_RESOURCE"
 
-📊 Formulas
-📊 Dashboards
-📊 Templates
-
-
-Download:
-
-{RESOURCES["excel"]}
-
-"""
 
 
     return None
@@ -289,15 +304,61 @@ Download:
 
 
 
-# -----------------------------
-# DISPLAY HISTORY
-# -----------------------------
+
+# ==========================
+# POPULAR QUESTIONS
+# ==========================
+
+
+st.subheader(
+"🔥 Popular Questions"
+)
+
+
+
+cols = st.columns(5)
+
+
+popular=[
+
+"Top COBOL interview questions",
+
+"Excel dashboard ideas",
+
+"Best AI prompts",
+
+"Create resume",
+
+"JCL examples"
+
+]
+
+
+for col,q in zip(cols,popular):
+
+
+    if col.button(q):
+
+        st.session_state.selected_question=q
+
+        st.rerun()
+
+
+
+
+
+
+# ==========================
+# DISPLAY CHAT HISTORY
+# ==========================
 
 
 for msg in st.session_state.messages:
 
 
-    with st.chat_message(msg["role"]):
+    with st.chat_message(
+        msg["role"]
+    ):
 
         st.write(
             msg["content"]
@@ -306,185 +367,331 @@ for msg in st.session_state.messages:
 
 
 
-# -----------------------------
-# CHAT INPUT
-# -----------------------------
+
+# ==========================
+# HANDLE BUTTON QUESTIONS
+# ==========================
 
 
-prompt = st.chat_input(
-    "Ask your question..."
-)
+if "selected_question" in st.session_state:
 
+
+    prompt = st.session_state.selected_question
+
+
+    del st.session_state.selected_question
+
+
+
+else:
+
+
+    prompt = st.chat_input(
+        "Ask your question..."
+    )
+
+
+
+
+
+# ==========================
+# MAIN CHAT ENGINE
+# ==========================
 
 
 if prompt:
 
 
     st.session_state.messages.append(
+
         {
         "role":"user",
         "content":prompt
         }
+
     )
+
 
 
     category,confidence = detect_category(prompt)
 
 
 
-    st.info(
-        f"""
+    st.success(
+
+f"""
+
 Detected Topic:
 
 {category}
 
-Confidence: {confidence}%
+
+Confidence:
+
+{confidence}%
+
 """
-    )
+
+)
 
 
 
-    reply = special_reply(prompt)
+    answer = special_answer(prompt)
 
 
 
-    if not reply:
+    if answer=="MAINFRAME_RESOURCE":
+
+
+        resource_card(
+
+        "💻 COBOL / Mainframe Interview Pack",
+
+        """
+
+Includes:
+
+✔ COBOL Questions
+
+✔ JCL Guides
+
+✔ Mainframe Interview Preparation
+
+
+""",
+
+        RESOURCES["mainframe"]
+
+        )
+
+
+        answer=""
+
+
+
+    elif answer=="EXCEL_RESOURCE":
+
+
+        resource_card(
+
+        "📊 Excel Learning Resources",
+
+        """
+
+Includes:
+
+✔ Excel Templates
+
+✔ Dashboards
+
+✔ Formulas
+
+
+""",
+
+        RESOURCES["excel"]
+
+        )
+
+
+        answer=""
+
+
+
+    elif answer is None:
 
 
         try:
 
 
-            response = client.chat.completions.create(
+            result = client.chat.completions.create(
 
                 model="llama-3.1-8b-instant",
 
                 messages=[
 
+
                 {
+
                 "role":"system",
 
                 "content":
-                """
-You are Punit AI Assistant.
-Answer only about:
-Excel,
-AI,
-Data Analytics,
-Mainframe technologies.
 
-Promote Punit Tech Hub resources when relevant.
+                """
+
+You are Punit AI Assistant.
+
+Only answer questions related to:
+
+Excel
+
+AI
+
+Data Analytics
+
+Mainframe
+
+
+Recommend Punit Tech Hub resources when useful.
+
 """
+
                 },
+
 
                 *st.session_state.messages
 
+
                 ],
 
+
                 temperature=0.4
+
 
             )
 
 
-            reply=response.choices[0].message.content
+            answer=result.choices[0].message.content
 
 
 
         except Exception as e:
 
 
-            reply=f"""
-AI service error:
+            answer=f"""
+
+AI service unavailable.
+
+
+Error:
 
 {e}
+
 """
 
 
 
-    st.session_state.messages.append(
-
-        {
-        "role":"assistant",
-        "content":reply
-        }
-
-    )
+    if answer:
 
 
-    # analytics
+        st.session_state.messages.append(
 
-    st.session_state.analytics.append(
+            {
 
-        {
+            "role":"assistant",
 
-        "Date":
-        datetime.now(),
+            "content":answer
 
-        "Question":
-        prompt,
+            }
 
-        "Category":
-        category
-
-        }
-
-    )
+        )
 
 
 
-    with st.chat_message("assistant"):
+        with st.chat_message(
+            "assistant"
+        ):
 
-        st.write(reply)
+            st.write(answer)
 
 
 
-# -----------------------------
-# RESOURCE NAVIGATION
-# -----------------------------
+
+# ==========================
+# FEEDBACK
+# ==========================
+
+
+st.divider()
+
+
+st.write(
+"Was this helpful?"
+)
+
+
+c1,c2=st.columns(2)
+
+
+c1.button(
+"👍 Yes"
+)
+
+
+c2.button(
+"👎 No"
+)
+
+
+
+
+
+# ==========================
+# WEBSITE LINKS
+# ==========================
 
 
 st.divider()
 
 
 st.subheader(
-"Explore Punit Tech Hub"
+"🌐 Explore Punit Tech Hub"
 )
 
 
 
-c1,c2,c3 = st.columns(3)
+a,b,c=st.columns(3)
 
 
-c1.link_button(
+
+a.link_button(
+
 "📊 Excel Tutorials",
+
 "https://www.punittechhub.com/excel-tutorials"
+
 )
 
 
-c2.link_button(
+
+b.link_button(
+
 "🤖 AI Resources",
-"https://www.punittechhub.com/ai-learning-resources"
+
+"https://www.punittechhub.com/all-resources"
+
 )
 
 
-c3.link_button(
+
+c.link_button(
+
 "💻 Mainframe Tutorials",
+
 "https://www.punittechhub.com/mainframe-tutorials"
+
 )
 
 
 
-# -----------------------------
-# DOWNLOAD ANALYTICS
-# -----------------------------
+
+# ==========================
+# ANALYTICS
+# ==========================
+
+
+st.divider()
 
 
 if st.checkbox(
-"Show Analytics"
+"Admin Analytics"
 ):
 
 
     df=pd.DataFrame(
+
         st.session_state.analytics
+
     )
 
 
